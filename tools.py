@@ -81,7 +81,20 @@ def integrate_downwards(p0, dr, rho_0, interior):
 
     for i in range(num_steps):
         g = interior[num_steps - i - 1, 2]
-        ps[num_steps - i - 1] = p
         p += rho_0 * g * dr
+        ps[num_steps - i - 1] = p
 
     return ps
+
+
+def compute_mass(layers):
+    """
+    Add up the mass of layers as spherical shells with constant density
+    """
+    M = 0
+
+    for layer in layers:
+        [r0, r1, rho_0] = layer
+        M += 4 * np.pi * rho_0 * (r1**3 - r0**3) / 3
+
+    return M
