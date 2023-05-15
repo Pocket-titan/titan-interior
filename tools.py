@@ -1,7 +1,63 @@
 import numpy as np
 
 
-def integrate_layers(layers, num_steps=1000):
+def create_layers(layers):
+    """
+    Pass layers in format:
+    ```
+    [
+        [r0, r1, rho_0],
+        ...
+    ]
+    or
+    [
+        [radius, rho],
+        ...
+    ]
+    or
+    [
+        [r0, r1, rho_0, K, \\alpha],
+        ...
+    ]
+    or
+    [
+        [radius, rho, K, \\alpha],
+        ...
+    ]
+    ```
+    where K = bulk modulus, \\alpha = thermal expansivity
+    """
+    layers = np.array(layers)
+
+    if layers.shape[1] in [2, 4]:
+        new_layers = np.zeros([len(layers), layers.shape[1] + 1])
+
+        for i in range(len(layers)):
+            start = 0 if i == 0 else new_layers[i - 1, 1]
+            end = start + layers[i, 0]
+            assert (start + end) > 0
+            new_layers[i, :] = [start, end, *layers[i, 1:]]
+
+        return new_layers
+
+    if layers.shape[1] in [3, 5]:
+        for i, layer in enumerate(layers):
+            [r0, r1, rho, *rest] = layer
+            assert r0 >= 0 and r1 >= 0
+            assert r1 > r0
+
+            if i == 0:
+                assert r0 == 0
+
+            if i > 0:
+                assert r0 == layers[i - 1][1]
+
+        return layers
+
+    raise Exception()
+
+
+def integrate_layers(layers, integrate_density=False, num_steps=1000):
     """
     Layers start from center:
     [
@@ -12,6 +68,8 @@ def integrate_layers(layers, num_steps=1000):
     Returns:
     [layer, step, [r, m, g, p]]
     """
+    layers = np.array(layers)
+
     assert layers[0][0] == 0
     values = np.zeros([len(layers), num_steps, 4])
 
@@ -98,3 +156,16 @@ def compute_mass(layers):
         M += 4 * np.pi * rho_0 * (r1**3 - r0**3) / 3
 
     return M
+
+
+def compute_moment_of_inertia(layers):
+    """
+    Add up the moment of intertia of layers as spherical shells with constant density
+    """
+    MoI = 0
+
+    for layer in layers:
+        [r0, r1, rho_0] = layer
+        MoI += 8 * np.pi * rho_0 * (r1**5 - r0**5) / 15
+
+    return MoI
