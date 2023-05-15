@@ -7,6 +7,7 @@ from tools import (
     compute_moment_of_inertia,
     create_layers,
     integrate_layers,
+    integrate_density
 )
 
 sns.set_theme(
@@ -130,13 +131,24 @@ layers = create_layers(
 # ]
 
 # Sohl et al. 2014:
-
+'''
 layers = create_layers(
     [
-        [2048e3,2550],
-        [202e3,1300],
-        [178e3,1070],
-        [112e3,950]
+        [2048e3,2550,0,0,0,0],
+        [202e3,1300,0,0,0,0],
+        [178e3,1070,0,0,0,0],
+        [112e3,950,0,0,0,0]
+    ]
+)'''
+
+# Density and temperature test layer:
+
+layers = create_layers( #NOTE: Temperature is pretty irrelevant for all but the top layer
+    [
+        [2048e3,2550,12.5e9,5.5,93.6,1.10e-4],
+        [202e3,1300,17.82e9,5.4,0,0], #Ice VI, I believe. Based purely on K0, comparing Sohl 2014 and Fortes 2004.
+        [178e3,1070,9.7e9,5.1,0,2.1e-4], #Fortes 2004 (PhD thesis on water-ammonia), alpha from Sohl et al, 2014.
+        [112e3,950,10.995e9,7,0,0] #Using Ice I from Fortes 2012; I'm not sure it's the correct phase of ice but it'll do for now 
     ]
 )
 
@@ -147,6 +159,10 @@ rs = values[:, :, 0].flatten()
 ms = values[:, :, 1].flatten()
 gs = values[:, :, 2].flatten()
 ps = values[:, :, 3].flatten()
+
+#Testing out new function:
+
+new_values = integrate_density(layers,values,1000)
 
 m_total = ms[-1]
 p_center = ps[0]

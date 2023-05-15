@@ -24,6 +24,8 @@ def create_layers(layers):
         [radius, rho, K, \\alpha],
         ...
     ]
+    or
+        [radius,rho,K0,K',T, \\alpha]
     ```
     where K = bulk modulus, \\alpha = thermal expansivity
     """
@@ -53,6 +55,18 @@ def create_layers(layers):
                 assert r0 == layers[i - 1][1]
 
         return layers
+    
+    if layers.shape[1] in [6]:
+        
+        new_layers = np.zeros([len(layers), layers.shape[1] + 1])
+
+        for i in range(len(layers)):
+            start = 0 if i == 0 else new_layers[i-1,1]
+            end = start + layers[i,0]
+            assert (start+end)>0
+            new_layers[i, :] = [start, end, *layers[i, 1:]]
+
+        return new_layers
 
     raise Exception()
 
@@ -74,7 +88,7 @@ def integrate_layers(layers, integrate_density=False, num_steps=1000):
     values = np.zeros([len(layers), num_steps, 4])
 
     for i, layer in enumerate(layers):
-        [r0, r1, rho_0] = layer
+        [r0, r1, rho_0] = layer[0:3]
         assert r1 > r0
 
         if i > 0:
@@ -94,7 +108,7 @@ def integrate_layers(layers, integrate_density=False, num_steps=1000):
 
     for j, layer in enumerate(reversed(layers)):
         i = len(layers) - j - 1
-        [r0, r1, rho_0] = layer
+        [r0, r1, rho_0] = layer[0:3]
 
         assert r1 > r0
         dr = (r1 - r0) / num_steps
@@ -104,7 +118,90 @@ def integrate_layers(layers, integrate_density=False, num_steps=1000):
 
         values[i, :, 3] = ps
 
+    
+
     return values
+
+def integrate_density(layers,values,num_steps=1000):
+
+    #In doing this, I have treated K as linearly dependent on p (K= K0 + K' * dp, where K' is the derivative w.r.t. pressure, 
+    # as provided in Fortes 2012)
+    
+    converged = False
+
+    
+
+    iteration_counter = 0
+    new_values = np.zeros([len(layers),num_steps,6])
+
+    while converged==False:
+
+        
+
+        #Downward:
+        for i, layer in enumerate(layers):
+
+            [r0,r1,rho] = layer[0:3]
+            assert r1 > r0
+
+            if i > 0:
+                if not r0 == layers[i - 1][1]:
+                    raise Exception("Layers must be contiguous")
+
+            if i < len(layers) - 1:
+                if not r1 == layers[i + 1][0]:
+                    raise Exception("Layers must be contiguous")
+                
+            if iteration_counter==0:
+
+                new_values[i,:,:4] = values[i,:,:]
+                new_values[i,:,4] = rho
+                if i == 0:
+                    new_values[i,0,5] = layer[4]
+                elif i > 0:
+                    new_values[i,0,5] = new_values[i-1,-1,5]
+                
+            for j in range(1,num_steps):
+
+                dT = -layer[5]*(new_values[i,j,4]/rho -1 - 1/(layer[2] + layer[3]*(new_values[i,j,3]-new_values[i,j-1,3])))
+                T = new_values[i,j-1,5] + dT
+        
+        #Upward
+
+        for i, layer in enumerate(layers):
+
+            [r0,r1,rho] = layer[0:3]
+            
+            for j in range(1,num_steps):
+
+                rho_new = rho*(1 - layer[5]*(new_values[i,j,5]-new_values[i,j-1,5]) + 1/(layer[2] + layer[3]*(new_values[i,j,3]-new_values[i,j-1,3])))
+
+
+        if iteration_counter > 0:
+
+            difference = new_values - previous_values
+            rms_density = np.linalg.norm(difference[:,:,4])
+            if rms_density < 1e2:
+                converged = True
+
+        iteration_counter += 1
+
+        previous_values = new_values
+
+    return new_values
+    
+
+
+
+            
+
+
+
+
+
+
+
+
 
 
 def integrate_upwards(r0, dr, M0, rho_0, num_steps=1000):
