@@ -157,14 +157,15 @@ def integrate_density(layers,values,num_steps=1000):
                 new_values[i,:,:4] = values[i,:,:]
                 new_values[i,:,4] = rho
                 if i == 0:
-                    new_values[i,0,5] = layer[4]
+                    new_values[i,0,5] = layer[5]
                 elif i > 0:
                     new_values[i,0,5] = new_values[i-1,-1,5]
                 
             for j in range(1,num_steps):
 
-                dT = -layer[5]*(new_values[i,j,4]/rho -1 - 1/(layer[2] + layer[3]*(new_values[i,j,3]-new_values[i,j-1,3])))
+                dT = -layer[6]*(new_values[i,j,4]/rho -1 - 1/(layer[3] + layer[4]*(new_values[i,j,3]-new_values[i,j-1,3])))
                 T = new_values[i,j-1,5] + dT
+                new_values[i,j,5] = T
         
         #Upward
 
@@ -174,7 +175,8 @@ def integrate_density(layers,values,num_steps=1000):
             
             for j in range(1,num_steps):
 
-                rho_new = rho*(1 - layer[5]*(new_values[i,j,5]-new_values[i,j-1,5]) + 1/(layer[2] + layer[3]*(new_values[i,j,3]-new_values[i,j-1,3])))
+                rho_new = rho*(1 - layer[6]*(new_values[i,j,5]-new_values[i,j-1,5]) + 1/(layer[3] + layer[4]*(new_values[i,j,3]-new_values[i,j-1,3])))
+                new_values[i,j,4] = rho_new
 
 
         if iteration_counter > 0:
