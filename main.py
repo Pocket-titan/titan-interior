@@ -129,6 +129,17 @@ layers = create_layers(
 #     [0, R, 5515],
 # ]
 
+# Sohl et al. 2014:
+
+layers = create_layers(
+    [
+        [2048e3,2550],
+        [202e3,1300],
+        [178e3,1070],
+        [112e3,950]
+    ]
+)
+
 #TODO: adiabatic temperature propagation, propagate density changes
 
 values = integrate_layers(layers)
