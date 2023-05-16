@@ -129,7 +129,7 @@ layers = create_layers(
 #     [0, R, 5515],
 # ]
 
-#TODO: adiabatic temperature propagation, propagate density changes
+# TODO: adiabatic temperature propagation, propagate density changes
 
 values = integrate_layers(layers)
 rs = values[:, :, 0].flatten()
@@ -185,3 +185,10 @@ with plt.rc_context({"axes.grid": False}):
     plt.show()
 
 # %%
+A = np.array(
+    [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+    ]
+)

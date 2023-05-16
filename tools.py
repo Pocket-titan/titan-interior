@@ -57,7 +57,7 @@ def create_layers(layers):
     raise Exception()
 
 
-def integrate_layers(layers, integrate_density=False, num_steps=1000):
+def integrate_layers(layers, T0=None, num_steps=1000):
     """
     Layers start from center:
     [
@@ -70,11 +70,13 @@ def integrate_layers(layers, integrate_density=False, num_steps=1000):
     """
     layers = np.array(layers)
 
+    integrate_density = True if T0 is not None else False
+
     assert layers[0][0] == 0
     values = np.zeros([len(layers), num_steps, 4])
 
     for i, layer in enumerate(layers):
-        [r0, r1, rho_0] = layer
+        [r0, r1, rho_0, *rest] = layer
         assert r1 > r0
 
         if i > 0:
@@ -94,7 +96,7 @@ def integrate_layers(layers, integrate_density=False, num_steps=1000):
 
     for j, layer in enumerate(reversed(layers)):
         i = len(layers) - j - 1
-        [r0, r1, rho_0] = layer
+        [r0, r1, rho_0, *rest] = layer
 
         assert r1 > r0
         dr = (r1 - r0) / num_steps
@@ -103,6 +105,15 @@ def integrate_layers(layers, integrate_density=False, num_steps=1000):
         ps = integrate_downwards(p0, dr, rho_0, values[i, :, :])
 
         values[i, :, 3] = ps
+
+    values = np.c_[values, np.zeros(num_steps), np.zeros(num_steps), np.zeros(num_steps)]
+
+    if integrate_density is True:
+        for j, layer in enumerate(reversed(layers)):
+            i = len(layers) - j - 1
+            [r0, r1, rho_0, K, alpha, Cp] = layer
+
+            T0 = T0 if j == 0 else values[i + 1, 0, 4]
 
     return values
 
@@ -143,6 +154,10 @@ def integrate_downwards(p0, dr, rho_0, interior):
         ps[num_steps - i - 1] = p
 
     return ps
+
+
+def integrate_temperature_density(T0, dr, rho_0, interior):
+    pass
 
 
 def compute_mass(layers):
