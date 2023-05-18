@@ -185,8 +185,12 @@ def integrate_density(layers,values,num_steps=1000):
                     
                     for j in range(0,num_steps):
 
-                        new_values[e,num_steps-j-1,4] = dT*dr
-                        new_values[e,num_steps-j-1,5] = layer[2]*(1-layer[5]*(new_values[e,num_steps-j-1,4]-new_values[e,num_steps-1,4]) + (1/layer[3])*dp)
+                        dr = new_values[e,num_steps-j-1,0] - new_values[e,num_steps-1,0]
+
+                        drho = layer[2]*(1-layer[5]*dT*dr + (1/layer[3])*dp)
+
+                        new_values[e,num_steps-j-1,4] = layer[4] + dT*dr
+                        new_values[e,num_steps-j-1,5] = layer[2]*(1-layer[5]*dT*dr + (1/layer[3])*dp)
 
 
 
@@ -202,27 +206,21 @@ def integrate_density(layers,values,num_steps=1000):
         
         #Upward
 
+        M = 0
+        g=0
+        new_values[0,0,1] = M
+        new_values[0,0,2] = g
+
         for i, layer in enumerate(layers):
 
-            [r0,r1,rho] = layer[0:3]
-
-            if i == 0:
-                M = 0
-                new_values[i,0,1] = M
-                new_values[i,0,2] = 0
             
 
-            for j in range(1,num_steps-1):
-                dv = 2*3.141592*(new_values[i,j,0]-new_values[i,j-1,0])
-                drho = new_values[i,j,5]-new_values[i,j-1,5]
-                dM = drho*dv
-                M += dM
+            for j in range(1,num_steps):
+                v = (4/3)*np.pi*new_values[i,j,0]**3 - (4/3)*np.pi*new_values[i,j-1,0]**3
+                M += new_values[i,j,5]*v
                 new_values[i,j,1] = M
                 g = 6.67e-11 * M / new_values[i,j,0]**2
                 new_values[i,j,2] = g
-
-                if M < 0:
-                    print('Problem!')
             
             '''for j in range(1,num_steps):
 
@@ -234,7 +232,7 @@ def integrate_density(layers,values,num_steps=1000):
 
             difference = new_values - previous_values
             rms_density = np.linalg.norm(difference[:,:,4])
-            if rms_density < 1e2:
+            if rms_density < 1e1:
                 converged = True
 
         iteration_counter += 1
@@ -302,7 +300,7 @@ def compute_mass(layers):
     M = 0
 
     for layer in layers:
-        [r0, r1, rho_0] = layer
+        [r0, r1, rho_0] = layer[0:3]
         M += 4 * np.pi * rho_0 * (r1**3 - r0**3) / 3
 
     return M
@@ -315,7 +313,7 @@ def compute_moment_of_inertia(layers):
     MoI = 0
 
     for layer in layers:
-        [r0, r1, rho_0] = layer
+        [r0, r1, rho_0] = layer[0:3]
         MoI += 8 * np.pi * rho_0 * (r1**5 - r0**5) / 15
 
     return MoI

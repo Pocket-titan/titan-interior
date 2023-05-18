@@ -162,14 +162,15 @@ ms = values[:, :, 1].flatten()
 gs = values[:, :, 2].flatten()
 ps = values[:, :, 3].flatten()
 
-print(values[3,0,:])
-print(values[3,-1,:])
-
 
 
 #Testing out new function:
 
 new_values = integrate_density(layers,values,1000)
+rs = new_values[:, :, 0].flatten()
+ms = new_values[:, :, 1].flatten()
+gs = new_values[:, :, 2].flatten()
+ps = new_values[:, :, 3].flatten()
 
 m_total = ms[-1]
 p_center = ps[0]
@@ -219,3 +220,21 @@ with plt.rc_context({"axes.grid": False}):
     plt.show()
 
 # %%
+
+rs = new_values[:, :, 0].flatten()
+ms = new_values[:, :, 1].flatten()
+gs = new_values[:, :, 2].flatten()
+ps = new_values[:, :, 3].flatten()
+ts = new_values[:,:,4].flatten()
+rhos = new_values[:,:,5].flatten()
+
+fig1 = plt.figure()
+ax1 = fig1.add_subplot(1,2,1)
+ax2 = fig1.add_subplot(1,2,2)
+
+ax1.plot(ts,rs)
+ax2.plot(rhos,rs)
+
+
+
+plt.show()
