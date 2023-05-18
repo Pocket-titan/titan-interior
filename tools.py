@@ -156,7 +156,7 @@ def integrate_density(layers,values,num_steps=1000):
 
                 T = layer[4]
                 
-                for j in range(1,num_steps):
+                for j in range(0,num_steps):
 
                     T += layer[6]*dr
                     new_values[e,num_steps-j-1,4] = T
@@ -168,7 +168,7 @@ def integrate_density(layers,values,num_steps=1000):
                     dT = layer[6]
                     T = layer[4]
 
-                    for j in range(1,num_steps):
+                    for j in range(0,num_steps):
 
                         T += dT*dr
                         new_values[e,num_steps-j-1,4] = T
@@ -183,7 +183,7 @@ def integrate_density(layers,values,num_steps=1000):
 
                     new_values[e,num_steps-1,4] = new_values[e-1,0,4]
                     
-                    for j in range(1,num_steps):
+                    for j in range(0,num_steps):
 
                         new_values[e,num_steps-j-1,4] = dT*dr
                         new_values[e,num_steps-j-1,5] = layer[2]*(1-layer[5]*(new_values[e,num_steps-j-1,4]-new_values[e,num_steps-1,4]) + (1/layer[3])*dp)
@@ -210,8 +210,9 @@ def integrate_density(layers,values,num_steps=1000):
                 M = 0
                 new_values[i,0,1] = M
                 new_values[i,0,2] = 0
+            
 
-            for j in range(1,num_steps):
+            for j in range(1,num_steps-1):
                 dv = 2*3.141592*(new_values[i,j,0]-new_values[i,j-1,0])
                 drho = new_values[i,j,5]-new_values[i,j-1,5]
                 dM = drho*dv
@@ -219,6 +220,9 @@ def integrate_density(layers,values,num_steps=1000):
                 new_values[i,j,1] = M
                 g = 6.67e-11 * M / new_values[i,j,0]**2
                 new_values[i,j,2] = g
+
+                if M < 0:
+                    print('Problem!')
             
             '''for j in range(1,num_steps):
 
