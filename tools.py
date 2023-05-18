@@ -150,34 +150,46 @@ def integrate_density(layers,values,num_steps=1000):
                     new_values[e,0,4] = new_values[e-1,-1,4]
 
             dr = (new_values[e,num_steps-1,0] - new_values[e,0,0])/num_steps
-            dp = (new_values[e,num_steps-1,3] - new_values[e,0,3])/num_steps
+            #dp = (new_values[e,num_steps-1,3] - new_values[e,0,3])/num_steps
 
             if i==0:
 
                 T = layer[4]
+                p = 147*1e3
                 
                 for j in range(0,num_steps):
+
+                    dp = new_values[e,num_steps-j-1,0] - new_values[e,num_steps-1,0]
 
                     T += layer[6]*dr
                     new_values[e,num_steps-j-1,4] = T
                     new_values[e,num_steps-j-1,5] = layer[2]*(1-layer[5]*(new_values[e,num_steps-j-1,4]-new_values[e,num_steps-1,4]) + (1/layer[3])*dp)
+                    p += new_values[i,j,5] * new_values[i,j,2] * dr
+                    new_values[i,j,3] = p
+                    
 
             elif i > 0:
 
                 if layer[6] < 0.9:
                     dT = layer[6]
                     T = layer[4]
+                    p = new_values[i-1,0,3]
 
                     for j in range(0,num_steps):
+
+                        dp = new_values[e,num_steps-j-1,0] - new_values[e,num_steps-1,0]
 
                         T += dT*dr
                         new_values[e,num_steps-j-1,4] = T
                         new_values[e,num_steps-j-1,5] = layer[2]*(1-layer[5]*(new_values[e,num_steps-j-1,4]-new_values[e,num_steps-1,4]) + (1/layer[3])*dp)
+                        p += new_values[i,j,5] * new_values[i,j,2] * dr
+                        new_values[i,j,3] = p
 
 
                 elif layer[6] >0.9:
 
                     T = layer[4]
+                    p = new_values[i-1,0,3]
 
                     dT = layer[5]*new_values[e,num_steps-1,2]*T/layer[6]
 
@@ -185,12 +197,13 @@ def integrate_density(layers,values,num_steps=1000):
                     
                     for j in range(0,num_steps):
 
+                        dp = new_values[e,num_steps-j-1,0] - new_values[e,num_steps-1,0]
                         dr = new_values[e,num_steps-j-1,0] - new_values[e,num_steps-1,0]
-
-                        drho = layer[2]*(1-layer[5]*dT*dr + (1/layer[3])*dp)
 
                         new_values[e,num_steps-j-1,4] = layer[4] + dT*dr
                         new_values[e,num_steps-j-1,5] = layer[2]*(1-layer[5]*dT*dr + (1/layer[3])*dp)
+                        p += new_values[i,j,5] * new_values[i,j,2] * dr
+                        new_values[i,j,3] = p
 
 
 
@@ -210,8 +223,11 @@ def integrate_density(layers,values,num_steps=1000):
         g=0
         new_values[0,0,1] = M
         new_values[0,0,2] = g
+        p = new_values[0,0,5] * new_values[0,1,2] * new_values[0,0,0]
 
         for i, layer in enumerate(layers):
+
+            dr = -(new_values[i,-1,0]-new_values[i,0,0])/num_steps
 
             
 
@@ -221,6 +237,7 @@ def integrate_density(layers,values,num_steps=1000):
                 new_values[i,j,1] = M
                 g = 6.67e-11 * M / new_values[i,j,0]**2
                 new_values[i,j,2] = g
+                
             
             '''for j in range(1,num_steps):
 
@@ -232,7 +249,7 @@ def integrate_density(layers,values,num_steps=1000):
 
             difference = new_values - previous_values
             rms_density = np.linalg.norm(difference[:,:,4])
-            if rms_density < 1e1:
+            if rms_density < 1:
                 converged = True
 
         iteration_counter += 1

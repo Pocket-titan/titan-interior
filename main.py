@@ -220,7 +220,7 @@ with plt.rc_context({"axes.grid": False}):
     plt.show()
 
 # %%
-
+#Rough plot
 rs = new_values[:, :, 0].flatten()
 ms = new_values[:, :, 1].flatten()
 gs = new_values[:, :, 2].flatten()
