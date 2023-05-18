@@ -131,7 +131,7 @@ layers = create_layers(
 # ]
 
 # Sohl et al. 2014:
-'''
+
 layers = create_layers(
     [
         [2048e3,2550,0,0,0,0],
@@ -139,18 +139,20 @@ layers = create_layers(
         [178e3,1070,0,0,0,0],
         [112e3,950,0,0,0,0]
     ]
-)'''
-
-# Density and temperature test layer:
-
-layers = create_layers( #NOTE: Temperature is pretty irrelevant for all but the top layer
-    [
-        [2048e3,2550,12.5e9,5.5,93.6,1.10e-4],
-        [202e3,1300,17.82e9,5.4,0,0], #Ice VI, I believe. Based purely on K0, comparing Sohl 2014 and Fortes 2004.
-        [178e3,1070,9.7e9,5.1,0,2.1e-4], #Fortes 2004 (PhD thesis on water-ammonia), alpha from Sohl et al, 2014.
-        [112e3,950,10.995e9,7,0,0] #Using Ice I from Fortes 2012; I'm not sure it's the correct phase of ice but it'll do for now 
-    ]
 )
+
+# Density and temperature test layer: (pure iron inner core)
+
+layers = create_layers(
+    [
+        [300e3, 8058.3, 166.41e9, 900, 1.12e-5, 8e-3, 0],
+        [1771e3, 2536.6, 67.27e9,500, 2e-5, 2090, 1],
+        [116e3, 1344.5, 17.82e9,200, 240e-6, 2090, 1],
+        [117e3, 1268.6, 13.93e9,150, 240e-6, 2030, 1],
+        [125e3, 1193.2, 13.951e9,125, 260e-6, 1000, 1], 
+        [146e3, 932.8, 10.995e9,93, 125e-6, 8e-3, 0]
+    ]
+)#Data from Fortes 2012 and Noya et al 2007. Layer 5 is Antigorite, approximately what Fortes calls 'Rock'
 
 #TODO: adiabatic temperature propagation, propagate density changes
 
@@ -159,6 +161,11 @@ rs = values[:, :, 0].flatten()
 ms = values[:, :, 1].flatten()
 gs = values[:, :, 2].flatten()
 ps = values[:, :, 3].flatten()
+
+print(values[3,0,:])
+print(values[3,-1,:])
+
+
 
 #Testing out new function:
 

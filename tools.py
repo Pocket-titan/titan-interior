@@ -25,7 +25,7 @@ def create_layers(layers):
         ...
     ]
     or
-        [radius,rho,K0,K',T, \\alpha]
+        [radius,rho,K,T, \\alpha, cp or dT/dr, conductive or convective] (0 for conductive, 1 for convective)
     ```
     where K = bulk modulus, \\alpha = thermal expansivity
     """
@@ -56,7 +56,7 @@ def create_layers(layers):
 
         return layers
     
-    if layers.shape[1] in [6]:
+    if layers.shape[1] in [6,7]:
         
         new_layers = np.zeros([len(layers), layers.shape[1] + 1])
 
@@ -123,60 +123,107 @@ def integrate_layers(layers, integrate_density=False, num_steps=1000):
     return values
 
 def integrate_density(layers,values,num_steps=1000):
-
-    #In doing this, I have treated K as linearly dependent on p (K= K0 + K' * dp, where K' is the derivative w.r.t. pressure, 
-    # as provided in Fortes 2012)
     
     converged = False
 
-    
-
     iteration_counter = 0
     new_values = np.zeros([len(layers),num_steps,6])
+
+    l = len(layers)
 
     while converged==False:
 
         
 
         #Downward:
-        for i, layer in enumerate(layers):
+        for i, layer in enumerate(reversed(layers)):
 
-            [r0,r1,rho] = layer[0:3]
-            assert r1 > r0
-
-            if i > 0:
-                if not r0 == layers[i - 1][1]:
-                    raise Exception("Layers must be contiguous")
-
-            if i < len(layers) - 1:
-                if not r1 == layers[i + 1][0]:
-                    raise Exception("Layers must be contiguous")
+            e = len(layers) - i -1
                 
             if iteration_counter==0:
 
-                new_values[i,:,:4] = values[i,:,:]
-                new_values[i,:,4] = rho
+                new_values[e,:,:4] = values[e,:,:]
+                #new_values[i,:,2] = rho
                 if i == 0:
-                    new_values[i,0,5] = layer[5]
+                    new_values[e,0,4] = layer[3]
                 elif i > 0:
-                    new_values[i,0,5] = new_values[i-1,-1,5]
-                
-            for j in range(1,num_steps):
+                    new_values[e,0,4] = new_values[e-1,-1,4]
 
-                dT = -layer[6]*(new_values[i,j,4]/rho -1 - 1/(layer[3] + layer[4]*(new_values[i,j,3]-new_values[i,j-1,3])))
-                T = new_values[i,j-1,5] + dT
-                new_values[i,j,5] = T
+            dr = (new_values[e,num_steps-1,0] - new_values[e,0,0])/num_steps
+            dp = (new_values[e,num_steps-1,3] - new_values[e,0,3])/num_steps
+
+            if i==0:
+
+                T = layer[4]
+                
+                for j in range(1,num_steps):
+
+                    T += layer[6]*dr
+                    new_values[e,num_steps-j-1,4] = T
+                    new_values[e,num_steps-j-1,5] = layer[2]*(1-layer[5]*(new_values[e,num_steps-j-1,4]-new_values[e,num_steps-1,4]) + (1/layer[3])*dp)
+
+            elif i > 0:
+
+                if layer[6] < 0.9:
+                    dT = layer[6]
+                    T = layer[4]
+
+                    for j in range(1,num_steps):
+
+                        T += dT*dr
+                        new_values[e,num_steps-j-1,4] = T
+                        new_values[e,num_steps-j-1,5] = layer[2]*(1-layer[5]*(new_values[e,num_steps-j-1,4]-new_values[e,num_steps-1,4]) + (1/layer[3])*dp)
+
+
+                elif layer[6] >0.9:
+
+                    T = layer[4]
+
+                    dT = layer[5]*new_values[e,num_steps-1,2]*T/layer[6]
+
+                    new_values[e,num_steps-1,4] = new_values[e-1,0,4]
+                    
+                    for j in range(1,num_steps):
+
+                        new_values[e,num_steps-j-1,4] = dT*dr
+                        new_values[e,num_steps-j-1,5] = layer[2]*(1-layer[5]*(new_values[e,num_steps-j-1,4]-new_values[e,num_steps-1,4]) + (1/layer[3])*dp)
+
+
+
+
+                '''
+                T = new_values[i-1,0,3]
+
+                for j in range(1,num_steps):
+
+                    dT = layer[4]*new_values[i,num_steps-j,2]*new_values[i,num_steps-j+1,3]/layer[5]
+                    T += dT*(new_values[i,num_steps-j,0]-new_values[i,(num_steps-j+1),0])
+                    new_values[i,num_steps-j,4] = T'''
         
         #Upward
 
         for i, layer in enumerate(layers):
 
             [r0,r1,rho] = layer[0:3]
-            
+
+            if i == 0:
+                M = 0
+                new_values[i,0,1] = M
+                new_values[i,0,2] = 0
+
             for j in range(1,num_steps):
+                dv = 2*3.141592*(new_values[i,j,0]-new_values[i,j-1,0])
+                drho = new_values[i,j,5]-new_values[i,j-1,5]
+                dM = drho*dv
+                M += dM
+                new_values[i,j,1] = M
+                g = 6.67e-11 * M / new_values[i,j,0]**2
+                new_values[i,j,2] = g
+            
+            '''for j in range(1,num_steps):
 
                 rho_new = rho*(1 - layer[6]*(new_values[i,j,5]-new_values[i,j-1,5]) + 1/(layer[3] + layer[4]*(new_values[i,j,3]-new_values[i,j-1,3])))
-                new_values[i,j,4] = rho_new
+                new_values[i,j,4] = rho_new'''
 
 
         if iteration_counter > 0:
