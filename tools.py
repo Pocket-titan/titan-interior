@@ -55,13 +55,10 @@ def create_layers(layers):
                 assert r0 == layers[i - 1][1]
 
         return layers
-<<<<<<< HEAD
-=======
-    
-    if layers.shape[1] in [6,7]:
-        
+
+    if layers.shape[1] in [6, 7]:
         new_layers = np.zeros([len(layers), layers.shape[1] + 1])
->>>>>>> e3357d8df251daad135b75b6e089b672f1f81423
+        return new_layers
 
     # if layers.shape[1] in [6]:
     #     new_layers = np.zeros([len(layers), layers.shape[1] + 1])
@@ -117,202 +114,146 @@ def integrate_layers(layers, T0=None, num_steps=1000):
 
     return values
 
-<<<<<<< HEAD
 
 def integrate_density(layers, values, num_steps=1000):
-    # In doing this, I have treated K as linearly dependent on p (K= K0 + K' * dp, where K' is the derivative w.r.t. pressure,
-    # as provided in Fortes 2012)
-
-=======
-def integrate_density(layers,values,num_steps=1000):
-    
->>>>>>> e3357d8df251daad135b75b6e089b672f1f81423
     converged = False
 
     iteration_counter = 0
     new_values = np.zeros([len(layers), num_steps, 6])
 
-<<<<<<< HEAD
-    while converged is False:
-        # Downward:
-        for i, layer in enumerate(layers):
-            [r0, r1, rho] = layer[0:3]
-            assert r1 > r0
-
-            if i > 0:
-                if not r0 == layers[i - 1][1]:
-                    raise Exception("Layers must be contiguous")
-
-            if i < len(layers) - 1:
-                if not r1 == layers[i + 1][0]:
-                    raise Exception("Layers must be contiguous")
-
-            if iteration_counter == 0:
-                new_values[i, :, :4] = values[i, :, :]
-                new_values[i, :, 4] = rho
-                if i == 0:
-                    new_values[i, 0, 5] = layer[5]
-                elif i > 0:
-                    new_values[i, 0, 5] = new_values[i - 1, -1, 5]
-
-            for j in range(1, num_steps):
-                dT = -layer[6] * (
-                    new_values[i, j, 4] / rho
-                    - 1
-                    - 1
-                    / (
-                        layer[3]
-                        + layer[4] * (new_values[i, j, 3] - new_values[i, j - 1, 3])
-                    )
-                )
-                T = new_values[i, j - 1, 5] + dT
-                new_values[i, j, 5] = T
-        # [0, 1, 2, 3, 4,   5]
-        # [r, M, g, p, rho, T]
-
-        # Upward
-=======
     l = len(layers)
 
-    while converged==False:
-
-        
-
-        #Downward:
+    while converged == False:
+        # Downward:
         for i, layer in enumerate(reversed(layers)):
+            e = len(layers) - i - 1
 
-            e = len(layers) - i -1
-                
-            if iteration_counter==0:
-
-                new_values[e,:,:4] = values[e,:,:]
-                #new_values[i,:,2] = rho
+            if iteration_counter == 0:
+                new_values[e, :, :4] = values[e, :, :]
+                # new_values[i,:,2] = rho
                 if i == 0:
-                    new_values[e,0,4] = layer[3]
+                    new_values[e, 0, 4] = layer[3]
                 elif i > 0:
-                    new_values[e,0,4] = new_values[e-1,-1,4]
+                    new_values[e, 0, 4] = new_values[e - 1, -1, 4]
 
-            dr = (new_values[e,num_steps-1,0] - new_values[e,0,0])/num_steps
-            #dp = (new_values[e,num_steps-1,3] - new_values[e,0,3])/num_steps
+            dr = (new_values[e, num_steps - 1, 0] - new_values[e, 0, 0]) / num_steps
+            # dp = (new_values[e,num_steps-1,3] - new_values[e,0,3])/num_steps
 
-            if i==0:
-
+            if i == 0:
                 T = layer[4]
-                p = 147*1e3
-                
-                for j in range(0,num_steps):
+                p = 147 * 1e3
 
-                    dp = new_values[e,num_steps-j-1,0] - new_values[e,num_steps-1,0]
+                for j in range(0, num_steps):
+                    dp = (
+                        new_values[e, num_steps - j - 1, 0]
+                        - new_values[e, num_steps - 1, 0]
+                    )
 
-                    T += layer[6]*dr
-                    new_values[e,num_steps-j-1,4] = T
-                    new_values[e,num_steps-j-1,5] = layer[2]*(1-layer[5]*(new_values[e,num_steps-j-1,4]-new_values[e,num_steps-1,4]) + (1/layer[3])*dp)
-                    p += new_values[i,j,5] * new_values[i,j,2] * dr
-                    new_values[i,j,3] = p
-                    
+                    T += layer[6] * dr
+                    new_values[e, num_steps - j - 1, 4] = T
+                    new_values[e, num_steps - j - 1, 5] = layer[2] * (
+                        1
+                        - layer[5]
+                        * (
+                            new_values[e, num_steps - j - 1, 4]
+                            - new_values[e, num_steps - 1, 4]
+                        )
+                        + (1 / layer[3]) * dp
+                    )
+                    p += new_values[i, j, 5] * new_values[i, j, 2] * dr
+                    new_values[i, j, 3] = p
 
             elif i > 0:
-
                 if layer[6] < 0.9:
                     dT = layer[6]
                     T = layer[4]
-                    p = new_values[i-1,0,3]
+                    p = new_values[i - 1, 0, 3]
 
-                    for j in range(0,num_steps):
+                    for j in range(0, num_steps):
+                        dp = (
+                            new_values[e, num_steps - j - 1, 0]
+                            - new_values[e, num_steps - 1, 0]
+                        )
 
-                        dp = new_values[e,num_steps-j-1,0] - new_values[e,num_steps-1,0]
+                        T += dT * dr
+                        new_values[e, num_steps - j - 1, 4] = T
+                        new_values[e, num_steps - j - 1, 5] = layer[2] * (
+                            1
+                            - layer[5]
+                            * (
+                                new_values[e, num_steps - j - 1, 4]
+                                - new_values[e, num_steps - 1, 4]
+                            )
+                            + (1 / layer[3]) * dp
+                        )
+                        p += new_values[i, j, 5] * new_values[i, j, 2] * dr
+                        new_values[i, j, 3] = p
 
-                        T += dT*dr
-                        new_values[e,num_steps-j-1,4] = T
-                        new_values[e,num_steps-j-1,5] = layer[2]*(1-layer[5]*(new_values[e,num_steps-j-1,4]-new_values[e,num_steps-1,4]) + (1/layer[3])*dp)
-                        p += new_values[i,j,5] * new_values[i,j,2] * dr
-                        new_values[i,j,3] = p
-
-
-                elif layer[6] >0.9:
-
+                elif layer[6] > 0.9:
                     T = layer[4]
-                    p = new_values[i-1,0,3]
+                    p = new_values[i - 1, 0, 3]
 
-                    dT = layer[5]*new_values[e,num_steps-1,2]*T/layer[6]
+                    dT = layer[5] * new_values[e, num_steps - 1, 2] * T / layer[6]
 
-                    new_values[e,num_steps-1,4] = new_values[e-1,0,4]
-                    
-                    for j in range(0,num_steps):
+                    new_values[e, num_steps - 1, 4] = new_values[e - 1, 0, 4]
 
-                        dp = new_values[e,num_steps-j-1,0] - new_values[e,num_steps-1,0]
-                        dr = new_values[e,num_steps-j-1,0] - new_values[e,num_steps-1,0]
+                    for j in range(0, num_steps):
+                        dp = (
+                            new_values[e, num_steps - j - 1, 0]
+                            - new_values[e, num_steps - 1, 0]
+                        )
+                        dr = (
+                            new_values[e, num_steps - j - 1, 0]
+                            - new_values[e, num_steps - 1, 0]
+                        )
 
-                        new_values[e,num_steps-j-1,4] = layer[4] + dT*dr
-                        new_values[e,num_steps-j-1,5] = layer[2]*(1-layer[5]*dT*dr + (1/layer[3])*dp)
-                        p += new_values[i,j,5] * new_values[i,j,2] * dr
-                        new_values[i,j,3] = p
+                        new_values[e, num_steps - j - 1, 4] = layer[4] + dT * dr
+                        new_values[e, num_steps - j - 1, 5] = layer[2] * (
+                            1 - layer[5] * dT * dr + (1 / layer[3]) * dp
+                        )
+                        p += new_values[i, j, 5] * new_values[i, j, 2] * dr
+                        new_values[i, j, 3] = p
 
-
-
-
-                '''
+                """
                 T = new_values[i-1,0,3]
 
                 for j in range(1,num_steps):
 
                     dT = layer[4]*new_values[i,num_steps-j,2]*new_values[i,num_steps-j+1,3]/layer[5]
                     T += dT*(new_values[i,num_steps-j,0]-new_values[i,(num_steps-j+1),0])
-                    new_values[i,num_steps-j,4] = T'''
-        
-        #Upward
+                    new_values[i,num_steps-j,4] = T"""
+
+        # Upward
 
         M = 0
-        g=0
-        new_values[0,0,1] = M
-        new_values[0,0,2] = g
-        p = new_values[0,0,5] * new_values[0,1,2] * new_values[0,0,0]
+        g = 0
+        new_values[0, 0, 1] = M
+        new_values[0, 0, 2] = g
+        p = new_values[0, 0, 5] * new_values[0, 1, 2] * new_values[0, 0, 0]
 
->>>>>>> e3357d8df251daad135b75b6e089b672f1f81423
         for i, layer in enumerate(layers):
             [r0, r1, rho] = layer[0:3]
 
-<<<<<<< HEAD
+            dr = -(new_values[i, -1, 0] - new_values[i, 0, 0]) / num_steps
+
             for j in range(1, num_steps):
-                rho_new = rho * (
-                    1
-                    - layer[6] * (new_values[i, j, 5] - new_values[i, j - 1, 5])
-                    + 1
-                    / (
-                        layer[3]
-                        + layer[4] * (new_values[i, j, 3] - new_values[i, j - 1, 3])
-                    )
-                )
-                new_values[i, j, 4] = rho_new
-=======
-            dr = -(new_values[i,-1,0]-new_values[i,0,0])/num_steps
+                v = (4 / 3) * np.pi * new_values[i, j, 0] ** 3 - (
+                    4 / 3
+                ) * np.pi * new_values[i, j - 1, 0] ** 3
+                M += new_values[i, j, 5] * v
+                new_values[i, j, 1] = M
+                g = 6.67e-11 * M / new_values[i, j, 0] ** 2
+                new_values[i, j, 2] = g
 
-            
-
-            for j in range(1,num_steps):
-                v = (4/3)*np.pi*new_values[i,j,0]**3 - (4/3)*np.pi*new_values[i,j-1,0]**3
-                M += new_values[i,j,5]*v
-                new_values[i,j,1] = M
-                g = 6.67e-11 * M / new_values[i,j,0]**2
-                new_values[i,j,2] = g
-                
-            
-            '''for j in range(1,num_steps):
+            """for j in range(1,num_steps):
 
                 rho_new = rho*(1 - layer[6]*(new_values[i,j,5]-new_values[i,j-1,5]) + 1/(layer[3] + layer[4]*(new_values[i,j,3]-new_values[i,j-1,3])))
-                new_values[i,j,4] = rho_new'''
-
->>>>>>> e3357d8df251daad135b75b6e089b672f1f81423
+                new_values[i,j,4] = rho_new"""
 
         if iteration_counter > 0:
             difference = new_values - previous_values
-<<<<<<< HEAD
             rms_density = np.linalg.norm(difference[:, :, 4])
-            if rms_density < 1e2:
-=======
-            rms_density = np.linalg.norm(difference[:,:,4])
             if rms_density < 1:
->>>>>>> e3357d8df251daad135b75b6e089b672f1f81423
                 converged = True
 
         iteration_counter += 1
@@ -367,11 +308,7 @@ def compute_mass(layers):
     M = 0
 
     for layer in layers:
-<<<<<<< HEAD
-        [r0, r1, rho_0, *rest] = layer
-=======
         [r0, r1, rho_0] = layer[0:3]
->>>>>>> e3357d8df251daad135b75b6e089b672f1f81423
         M += 4 * np.pi * rho_0 * (r1**3 - r0**3) / 3
 
     return M
@@ -384,11 +321,7 @@ def compute_moment_of_inertia(layers):
     MoI = 0
 
     for layer in layers:
-<<<<<<< HEAD
-        [r0, r1, rho_0, *rest] = layer
-=======
         [r0, r1, rho_0] = layer[0:3]
->>>>>>> e3357d8df251daad135b75b6e089b672f1f81423
         MoI += 8 * np.pi * rho_0 * (r1**5 - r0**5) / 15
 
     return MoI

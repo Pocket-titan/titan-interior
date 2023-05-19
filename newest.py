@@ -1,8 +1,10 @@
 # %%
+from typing import Union
+
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from tools import compute_mass, compute_moment_of_inertia, create_layers
+from tools import create_layers
 
 np.set_printoptions(precision=2, suppress=True)
 
@@ -28,6 +30,32 @@ MoI = 0.352
 
 
 # %%
+def compute_mass(values):
+    values = values.reshape([values.shape[0] * values.shape[1], values.shape[2]])[::-1, :]
+    m = 0
+
+    for i in range(1, values.shape[0]):
+        r0 = values[i, 0]
+        r1 = values[i - 1, 0]
+        rho = values[i, 4]
+        m += 4 * np.pi * rho * (r1**3 - r0**3) / 3
+
+    return m
+
+
+def compute_moment_of_inertia(values):
+    values = values.reshape([values.shape[0] * values.shape[1], values.shape[2]])[::-1, :]
+    moment_of_inertia = 0
+
+    for i in range(1, values.shape[0]):
+        r0 = values[i, 0]
+        r1 = values[i - 1, 0]
+        rho = values[i, 4]
+        moment_of_inertia += 8 * np.pi * rho * (r1**5 - r0**5) / 15
+
+    return moment_of_inertia
+
+
 def integrate_upwards(r0, dr, M0, rhos, num_steps=10_000):
     """
     Integrate a layer upwards and return [[r, M, g]]
@@ -116,7 +144,7 @@ def integrate(layers, values=None, num_steps=10_000):
     return values
 
 
-def integrate_density_and_temp(layers, values, T0=93):
+def integrate_density_and_temp(layers, values, T0: Union[None, float] = 93):
     num_steps = values.shape[1]
     values = np.copy(values)
 
@@ -174,118 +202,130 @@ def K(K0, C, D):
     return lambda T: K0 + C * T + D * T**2
 
 
-# Fortes (2012)
-# Pure water ice
-layers = create_layers(
-    # [R, rho_0, alpha, K, Cp]
-    [
-        # "Rock"
-        [
-            2054e3,
-            (3343 + 2558) / 2,  # 50/50 of Antigorite and Olivine
-            (2.66 + 2) / 2 * 1e-5,
-            (67.27 + 131.1) / 2 * 1e9,
-            lambda T: (
-                1e3 + (289.73 - 0.024015 * T + 131045 / T**2 - 2779 / T ** (1 / 2))
-            )
-            / 2,
-            # 50/50 average of values for Antigorite (Osako, Thermal diffusivity, thermal conductivity and heat capacity of serpentine (antigorite) under high pressure)
-            # and Olivine (Robie, Heat capacity and entropy of Ni2sio4-olivine from 5 to 1000K and heat capacity of Co2SiOa from 360 to 1000K),
-        ],
-        # Ice VI
-        [
-            132e3,
-            1326.8,
-            211e-6,  # Noya (2007) Equation of State, Thermal Expansion Coefficient, and Isothermal Compressibility for Ices Ih, II, III, V, and VI, as Obtained from Computer Simulation†
-            K(17.82e9, -0.0385, 3.625e-5),
-            2.3e3,  # Vladimir Tchijov, Heat capacity of high-pressure ice polymorphs (eyeballed avg)
-        ],
-        # Ice V
-        [
-            117e3,
-            1267.0,
-            4.5e-5,
-            13.93e9,
-            2.5e3,  # Vladimir Tchijov, Heat capacity of high-pressure ice polymorphs (eyeballed avg)
-        ],
-        # Ice II
-        [
-            125e3,
-            1199.65,
-            2.48e-4,  # Fortes (The incompressibility and thermal expansivity of D2O ice II determined by powder neutron diffraction)
-            K(13.951e9, 0.0014, -4.25e-5),
-            1.85e3,  # Vladimir Tchijov, Heat capacity of high-pressure ice polymorphs (eyeballed avg)
-        ],
-        # Ice Ih
-        [
-            146e3,
-            934.31,
-            1.56e-4,  # Grasset
-            K(10.995e9, -0.004068, -2.051e-5),
-            1925,  # Kronrod
-        ],
-    ]
-)
-
-
-# Light ocean
-layers = create_layers(
-    [
-        # "Rock"
-        [
-            2116e3,
-            (3343 + 2558) / 2,  # 50/50 of Antigorite and Olivine
-            (2.66 + 2) / 2 * 1e-5,
-            (67.27 + 131.1) / 2 * 1e9,
-            lambda T: (
-                1e3 + (289.73 - 0.024015 * T + 131045 / T**2 - 2779 / T ** (1 / 2))
-            )
-            / 2,
-            # 50/50 average of values for Antigorite (Osako, Thermal diffusivity, thermal conductivity and heat capacity of serpentine (antigorite) under high pressure)
-            # and Olivine (Robie, Heat capacity and entropy of Ni2sio4-olivine from 5 to 1000K and heat capacity of Co2SiOa from 360 to 1000K),
-        ],
-        # Ice VI
-        [
-            47e3,
-            1326.8,
-            211e-6,  # Noya (2007) Equation of State, Thermal Expansion Coefficient, and Isothermal Compressibility for Ices Ih, II, III, V, and VI, as Obtained from Computer Simulation†
-            K(17.82e9, -0.0385, 3.625e-5),
-            2.3e3,  # Vladimir Tchijov, Heat capacity of high-pressure ice polymorphs (eyeballed avg)
-        ],
-        # Ice V
-        [
-            62e3,
-            1267.0,
-            4.5e-5,
-            13.93e9,
-            2.5e3,  # Vladimir Tchijov, Heat capacity of high-pressure ice polymorphs (eyeballed avg)
-        ],
-        # Ocean
-        [
-            250e3,
-            950,
-            210e-6,
-            2.2e9,
-            4180,
-        ],
-        # Ice Ih
-        [
-            100e3,
-            934.31,
-            1.56e-4,  # Grasset
-            K(10.995e9, -0.004068, -2.051e-5),
-            1925,  # Kronrod
-        ],
-    ]
-)
-
-
+# [rho_0, alpha, K, Cp]
 thermo_values = {
-    "Ice I": [],
-    "Ice II": [],
-    "Ice V": [],
-    "Ice VI": [],
-    "Rock": [],
+    "Ice I": [
+        934.31,  # Fortes (2012)
+        1.56e-4,  # Grasset
+        K(10.995e9, -0.004068, -2.051e-5),  # Fortes (2012)
+        1925,  # Kronrod
+    ],
+    "Ice II": [
+        1199.65,  # Fortes (2012)
+        2.48e-4,  # Fortes (The incompressibility and thermal expansivity of D2O ice II...)
+        K(13.951e9, 0.0014, -4.25e-5),  # Fortes (2012)
+        1.85e3,  # Vladimir Tchijov, Heat capacity of high-pressure ice polymorphs (eyeballed avg)
+    ],
+    "Ice V": [
+        1267.0,  # Fortes (2012)
+        4.5e-5,  # Fortes (2012)
+        13.93e9,  # Fortes (2012)
+        2.5e3,  # Vladimir Tchijov, Heat capacity of high-pressure ice polymorphs (eyeballed avg)
+    ],
+    "Ice VI": [
+        1326.8,  # Fortes (2012)
+        211e-6,  # Noya (2007) Equation of State...
+        K(17.82e9, -0.0385, 3.625e-5),  # Fortes (2012)
+        2.3e3,  # Vladimir Tchijov, Heat capacity of high-pressure ice polymorphs (eyeballed avg)
+    ],
+    "Water": [
+        1000,
+        210e-6,
+        2.2e9,
+        4180,
+    ],
+    # "Rock" from Fortes (2012)
+    "Rock": [
+        (3343 + 2558) / 2,  # 50/50 of Antigorite and Olivine, Fortes
+        (2.66 + 2) / 2 * 1e-5,  # Fortes
+        lambda T: (67.27e9 - 0.01 * T + 131.1e9 - 0.0223 * T) / 2,  # Fortes
+        lambda T: (1e3 + (289.73 - 0.024015 * T + 131045 / T**2 - 2779 / T ** (1 / 2)))
+        / 2,
+        # 50/50 average of values for Antigorite (Osako (2010) Thermal diffusivity, thermal
+        # conductivity...) and Olivine (Robie, Heat capacity and entropy of Ni2sio4-olivine from..),
+    ],
+    "Iron": [
+        8000,
+        2e-5,  # Ichikawa (2014) (The P-V-T equation of state and thermodynamic properties of liquid iron)
+        # K(109.7e9, 4.66, -0.043),
+        # K(12.5e9, -0.0104, 0), # Fortes (2012)
+        46e9,  # at 5 GPa (The P-V-T equation of state and thermodynamic properties of liquid iron)
+        45,  # Ichikawa (2014)
+    ],
+    # Grasset
+    "HP ices": [
+        1310,  # Grasset
+        4.5e-5,  #  Ice VI
+        13.93e9,  # Ice VI
+        2.5e3,  # Ice VI
+    ],
+    # Grasset
+    "Silicates": [
+        3300,  # Grasset
+        2.4e-5,  # Grasset
+        K(131.1e9, -0.0223, 0),  # Just assuming 100% Olivine from Fortes (2012)
+        920,  # Grasset
+    ],
+}
+
+models = {
+    "Fortes": {
+        "Pure water ice": create_layers(
+            [
+                [2054e3, *thermo_values["Rock"]],
+                [132e3, *thermo_values["Ice VI"]],
+                [117e3, *thermo_values["Ice V"]],
+                [125e3, *thermo_values["Ice II"]],
+                [146e3, *thermo_values["Ice I"]],
+            ]
+        ),
+        "Light ocean": create_layers(
+            [
+                [2116e3, *thermo_values["Rock"]],
+                [47e3, *thermo_values["Ice VI"]],
+                [62e3, *thermo_values["Ice V"]],
+                [250e3, 950, *thermo_values["Water"][1:]],
+                [100e3, *thermo_values["Ice I"]],
+            ]
+        ),
+        "Dense ocean": create_layers(
+            [
+                [1984e3, *thermo_values["Rock"]],
+                [241e3, *thermo_values["Ice VI"]],
+                [250e3, 1200, *thermo_values["Water"][1:]],
+                [100e3, *thermo_values["Ice I"]],
+            ]
+        ),
+        "Pure iron inner core": create_layers(
+            [
+                [300e3, *thermo_values["Iron"]],
+                [1771e3, *thermo_values["Rock"]],
+                [116e3, *thermo_values["Ice VI"]],
+                [117e3, *thermo_values["Ice V"]],
+                [125e3, *thermo_values["Ice II"]],
+                [146e3, *thermo_values["Ice I"]],
+            ]
+        ),
+    },
+    "Grasset": {
+        "Core": create_layers(
+            [
+                [0, 910e3, *thermo_values["Iron"]],
+                [910e3, 1710e3, *thermo_values["Silicates"]],
+                [1710e3, 2200e3, *thermo_values["HP ices"]],
+                [2200e3, 2500e3, *thermo_values["Water"]],
+                [2500e3, 2575e3, *thermo_values["Ice I"]],
+            ]
+        ),
+        "No core": create_layers(
+            [
+                [0, 1870e3, *thermo_values["Silicates"]],
+                [1870e3, 2200e3, *thermo_values["HP ices"]],
+                [2200e3, 2500e3, *thermo_values["Water"]],
+                [2500e3, 2575e3, *thermo_values["Ice I"]],
+            ]
+        ),
+    },
 }
 
 
@@ -347,6 +387,7 @@ def make_temperature_profile(gs, ocean_range=[2200e3, 2500e3], T0=93, num_steps=
     return Ts
 
 
+layers = models["Fortes"]["Pure iron inner core"]
 values = iterate_layers(layers, max_iterations=5)
 
 rs = values[:, :, 0].flatten()
@@ -365,13 +406,13 @@ print(f"Gravity at surface: {g_surface:.2f} m/s^2")
 print("-------")
 
 # Verification
-MoI_computed = compute_moment_of_inertia(layers) / (m_total * rs[-1] ** 2)
-M_theoretical = compute_mass(layers)
+MoI_computed = compute_moment_of_inertia(values) / (m_total * rs[-1] ** 2)
+M_theoretical = compute_mass(values)
 pc_theoretical = 3 * G * M**2 / (8 * np.pi * R**4)
 print(f"Moment of inertia error: {abs(MoI_computed - MoI)/MoI * 100:.2f}%")
 print(f"Pressure error: {abs(p_center - pc_theoretical)/pc_theoretical * 100:.2f}%")
-print(f"Mass error (theory): {abs(m_total - M_theoretical)/M_theoretical * 100:.2f}%")
-print(f"Mass error (numerical): {abs(m_total - M)/M * 100:.2f}%")
+print(f"Mass error (numerical): {abs(m_total - M_theoretical)/M_theoretical * 100:.2f}%")
+print(f"Mass error (theory): {abs(m_total - M)/M * 100:.2f}%")
 print(f"Gravity error: {abs(g_surface - g)/g * 100:.2f}%")
 
 with plt.rc_context({"axes.grid": False}):
