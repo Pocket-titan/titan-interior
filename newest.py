@@ -266,6 +266,21 @@ thermo_values = {
         K(131.1e9, -0.0223, 0),  # Just assuming 100% Olivine from Fortes (2012)
         920,  # Grasset
     ],
+    # Kronrod
+    "Fe-Si": [
+        3700,
+        0,
+        133e9,
+        0,
+    ],
+    # Kronrod
+    "Rock ice mantle": [
+        2053.5,
+        0,
+        54.275e9,
+        0,
+    ],
+    "Ice VII": [0, 0, 0, 0],
 }
 
 models = {
@@ -326,6 +341,16 @@ models = {
             ]
         ),
     },
+    "Kronrod": create_layers(
+        [
+            [690e3, *thermo_values["Fe-Si"]],
+            [0, *thermo_values["Ice VII"]],
+            [0, *thermo_values["Ice VI"]],
+            [0, *thermo_values["Ice V"]],
+            [280e3, *thermo_values["Water"]],
+            [100e3, *thermo_values["Ice I"]],
+        ]
+    ),
 }
 
 
@@ -387,7 +412,7 @@ def make_temperature_profile(gs, ocean_range=[2200e3, 2500e3], T0=93, num_steps=
     return Ts
 
 
-layers = models["Fortes"]["Pure iron inner core"]
+layers = models["Fortes"]["Dense ocean"]
 values = iterate_layers(layers, max_iterations=5)
 
 rs = values[:, :, 0].flatten()
@@ -453,4 +478,6 @@ with plt.rc_context({"axes.grid": False}):
     plt.show()
 
 
+# %%
+values[:, 0, 5]
 # %%
