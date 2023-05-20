@@ -280,7 +280,12 @@ thermo_values = {
         54.275e9,
         0,
     ],
-    "Ice VII": [0, 0, 0, 0],
+    "Ice VII": [
+        0,
+        0,
+        0,
+        0,
+    ],
 }
 
 models = {
@@ -412,6 +417,29 @@ def make_temperature_profile(gs, ocean_range=[2200e3, 2500e3], T0=93, num_steps=
     return Ts
 
 
+def verify_results(m_total, g_surface, p_center, MoI_computed):
+    G = 6.67408e-11
+
+    # Titan values
+    M = 1.3452e23
+    R = 2575e3
+    g = 1.35
+    MoI = 0.352
+    pc_theoretical = 3 * G * M**2 / (8 * np.pi * R**4)
+
+    print(f"Total mass: {m_total:.2e} kg")
+    print(f"Pressure at center: {p_center/1e9:.2f} GPa")
+    print(f"Gravity at surface: {g_surface:.2f} m/s^2")
+    print("-------")
+
+    # Verification
+    pc_theoretical = 3 * G * M**2 / (8 * np.pi * R**4)
+    print(f"Moment of inertia error: {abs(MoI_computed - MoI)/MoI * 100:.2f}%")
+    print(f"Pressure error: {abs(p_center - pc_theoretical)/pc_theoretical * 100:.2f}%")
+    print(f"Mass error (theory): {abs(m_total - M)/M * 100:.2f}%")
+    print(f"Gravity error: {abs(g_surface - g)/g * 100:.2f}%")
+
+
 layers = models["Fortes"]["Dense ocean"]
 values = iterate_layers(layers, max_iterations=5)
 
@@ -425,20 +453,8 @@ Ts = values[:, :, 5].flatten()
 m_total = ms[-1]
 p_center = ps[0]
 g_surface = gs[-1]
-print(f"Total mass: {m_total:.2e} kg")
-print(f"Pressure at center: {p_center/1e9:.2f} GPa")
-print(f"Gravity at surface: {g_surface:.2f} m/s^2")
-print("-------")
-
-# Verification
 MoI_computed = compute_moment_of_inertia(values) / (m_total * rs[-1] ** 2)
-M_theoretical = compute_mass(values)
-pc_theoretical = 3 * G * M**2 / (8 * np.pi * R**4)
-print(f"Moment of inertia error: {abs(MoI_computed - MoI)/MoI * 100:.2f}%")
-print(f"Pressure error: {abs(p_center - pc_theoretical)/pc_theoretical * 100:.2f}%")
-print(f"Mass error (numerical): {abs(m_total - M_theoretical)/M_theoretical * 100:.2f}%")
-print(f"Mass error (theory): {abs(m_total - M)/M * 100:.2f}%")
-print(f"Gravity error: {abs(g_surface - g)/g * 100:.2f}%")
+verify_results(m_total, g_surface, p_center, MoI_computed)
 
 with plt.rc_context({"axes.grid": False}):
     fig, axes = plt.subplots(ncols=5, figsize=(10, 5))
@@ -479,5 +495,7 @@ with plt.rc_context({"axes.grid": False}):
 
 
 # %%
-values[:, 0, 5]
+values[:, 0, 2]
+# %%
+ps[-1] / 1e9
 # %%
