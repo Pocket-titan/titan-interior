@@ -6,6 +6,7 @@ import numpy as np
 import seaborn as sns
 import seafreeze.seafreeze as sf
 from burnman import (
+    BoundaryLayerPerturbation,
     Composite,
     Layer,
     Mineral,
@@ -39,7 +40,28 @@ pc_theoretical = 3 * G * M**2 / (8 * np.pi * R**4)
 
 
 # %%
-def get_ice_values(phase: str):
+def adjust_mineral_density(mineral, rho_0):
+    rho, V = mineral.evaluate(["rho", "V"], 10**5, 300)
+    mass = rho * V
+    V_new = mass / rho_0
+    delta_V = V_new - V
+
+    return Mineral(
+        params={**mineral.params, "name": f"{mineral.params['name']} rho_0={rho_0:.3e}"},
+        property_modifiers=[
+            [
+                "linear",
+                {
+                    "delta_S": 0,
+                    "delta_E": 0,
+                    "delta_V": delta_V,
+                },
+            ]
+        ],
+    )
+
+
+def get_ice_values(phase: str, rho_0=None):
     assert phase in ["Ih", "II", "III", "V", "VI", "water1", "water2", "water_IAPWS95"]
     water_formula = dictionarize_formula("H2O")
 
@@ -66,14 +88,12 @@ def get_ice_values(phase: str):
     ]
 
     params = {
+        # Take liquid water as a base
         **minerals.HP_2011_ds62.h2oL().params,
-        # Standard stuff
         "name": f"Ice {phase}",
-        # "equation_of_state": "bm2",
-        # "equation_of_state": "mgd2",
         "molar_mass": molar_mass,
         "n": sum(water_formula.values()),
-        # # Seafreeze values
+        # Seafreeze values
         "K_0": Kt,
         "Kprime_0": Kp,
         "G_0": shear,
@@ -89,6 +109,10 @@ def get_ice_values(phase: str):
     }
 
     mineral = Mineral(params=params)
+
+    if rho_0 is not None:
+        mineral = adjust_mineral_density(mineral, rho_0)
+
     return (mineral, alpha, Kt, Cp)
 
 
@@ -106,9 +130,11 @@ materials = {
     "Ice V": get_ice_values("V")[0],
     "Ice VI": get_ice_values("VI")[0],
     "Water": minerals.HP_2011_ds62.h2oL(),
+    "Light water": adjust_mineral_density(minerals.HP_2011_ds62.h2oL(), 950),
+    "Dense water": adjust_mineral_density(minerals.HP_2011_ds62.h2oL(), 1200),
     "Iron": minerals.SE_2015.liquid_iron(),
     "Silicates": minerals.JH_2015.olivine([0.7, 0.3]),  # 100% olivine
-    "HP ices": get_ice_values("VI")[0],  # density adjustment: volume!
+    "HP ices": get_ice_values("VI", rho_0=1310)[0],
 }
 
 
@@ -136,7 +162,7 @@ models = {
             [
                 [1984e3, "Rock"],
                 [241e3, "Ice VI"],
-                [250e3, "Water"],
+                [250e3, "Dense water"],
                 [100e3, "Ice I"],
             ],
         ),
@@ -163,7 +189,7 @@ models = {
     "Grasset": {
         "Core": create_burnman_layers(
             [
-                [910e3, "Iron"],
+                [910e3, "Iron"],  # Temp gradient 6 K/GPa *Urakawa
                 [800e3, "Silicates"],
                 [490e3, "HP ices"],
                 [300e3, "Water"],
@@ -182,7 +208,65 @@ models = {
 }
 
 # Make the planet
-layers = models["Grasset"]["No core"]
+layers = models["Fortes"]["Dense ocean"]
+
+# convecting_layer = [x for x in layers if "water" in x.name.lower()][0]
+# perturbation = BoundaryLayerPerturbation(
+#     convecting_layer.radii[0],
+#     convecting_layer.radii[-1],
+#     rayleigh_number=1e5,
+#     # top has jump of 60K, botttom has jump of 100 - 60 = 40K
+#     temperature_change=900,
+#     boundary_layer_ratio=60.0 / 900,
+# )
+
+# convecting_layer.set_temperature_mode(
+#     "perturbed-adiabatic",
+#     perturbation.temperature(convecting_layer.radii),
+# )
+
+
+def make_temperature_profile(layers, gradients, T0=93):
+    dTs = []
+
+    # Starting from innermost layer, top to bottom
+    for i, layer in enumerate(layers):
+        drs = np.array(
+            [
+                0,
+                *np.diff(
+                    np.linspace(
+                        layer.radii[0],
+                        layer.radii[-1],
+                        num=layer.radii.shape[0],
+                    )
+                ),
+            ]
+        )
+        dTs.append(drs * gradients[i] / 1e3)
+
+    # Flip to make it start from topmost layer, top to bottom
+    Ts = np.array(dTs)[::-1]
+    Ts = np.cumsum(Ts.flatten()).reshape(Ts.shape)
+    # Flip both axes to make it start from innermost layer, bottom to top (which burnman wants)
+    Ts = np.array([x[::-1] + T0 for x in Ts][::-1])
+    return Ts
+
+
+# Inside to outside layers: start with core
+gradients = [
+    8,
+    0.1,
+    0.1,
+    0.1,
+]
+Ts = make_temperature_profile(layers, gradients)
+
+for i, layer in enumerate(layers):
+    layer.set_temperature_mode("user-defined", Ts[i])
+
+
+# %%
 titan = Planet("Titan", layers, verbose=True)
 titan.make()
 
@@ -210,6 +294,7 @@ print(
 # 2) impose temp gradient in burnman
 # 3) convection
 # 4) convection in burnman
+# 5) convection in rock-ice mantle?
 
 rs = titan.radii
 ms = np.array(
@@ -262,4 +347,54 @@ with plt.rc_context({"axes.grid": False}):
     plt.tight_layout()
     plt.show()
 
+
+# %%
+def create_temperatures(temperatures, num, gradient=None):
+    if gradient is not None:
+        T0 = temperatures[0] if hasattr(temperatures, "__iter__") else temperatures
+        return T0 + np.cumsum([0, *([gradient] * (num - 1))])
+
+    return np.linspace(temperatures[0], temperatures[1], num)
+
+
+create_temperatures([93, 900], num=100)
+
+# %%
+T0 = 93
+gradients = [
+    *reversed(
+        [
+            0.1,
+            0.2,
+            0.1,
+            0.1,
+        ]
+    )
+]
+Ts = []
+
+for i, layer in enumerate(reversed(layers)):
+    _T0 = T0 if i == 0 else Ts[-1][-1]
+    thickness = layer.radii[-1] - layer.radii[0]
+    Ts.append(
+        _T0 + np.linspace(0, thickness * gradients[i] / 1e3, num=layer.radii.shape[0])
+    )
+
+Ts = np.concatenate(
+    Ts,
+)
+plt.plot(Ts, titan.radii / 1e3)
+
+# %%
+
+plt.scatter(Ts, titan.radii / 1e3)
+
+# %%
+plt.scatter(Ts, titan.radii / 1e3)
+# %%
+x = [*np.linspace(0, 5, num=30), *np.linspace(5, 10, num=70)]
+y = [*np.linspace(0, 50, num=30), *np.linspace(50, 100, num=70)]
+plt.scatter(x, y)
+# %%
+y
 # %%

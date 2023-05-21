@@ -493,26 +493,45 @@ with plt.rc_context({"axes.grid": False}):
     plt.tight_layout()
     plt.show()
 
-#Values: [layer, entry, variable]
-#variables = [r,m,g,p,rho,T]
-temp = np.ones([len(values[0,:,0])])
+# %%
+# Values: [layer, entry, variable]
+# variables = [r,m,g,p,rho,T]
+temp = np.ones([len(values[0, :, 0])])
 
-norm_rad_1 = (values[0,:,0] - (min(values[0,:,0])*temp)) / ((max(values[0,:,0])-min(values[0,:,0]))*temp)
-norm_rad_2 = (values[1,:,0] - (min(values[1,:,0])*temp)) / ((max(values[1,:,0])-min(values[1,:,0]))*temp)
-norm_rad_3 = (values[2,:,0] - (min(values[2,:,0])*temp)) / ((max(values[2,:,0])-min(values[2,:,0]))*temp)
-norm_rad_4 = (values[3,:,0] - (min(values[3,:,0])*temp)) / ((max(values[3,:,0])-min(values[3,:,0]))*temp)
-#norm_rad_1 = (values[4,:,0] - (min(values[4,:,0])*temp)) / ((max(values[4,:,0]-min(values[4,:,0]))*temp)
+norm_rad_1 = (values[0, :, 0] - (min(values[0, :, 0]) * temp)) / (
+    (max(values[0, :, 0]) - min(values[0, :, 0])) * temp
+)
+norm_rad_2 = (values[1, :, 0] - (min(values[1, :, 0]) * temp)) / (
+    (max(values[1, :, 0]) - min(values[1, :, 0])) * temp
+)
+norm_rad_3 = (values[2, :, 0] - (min(values[2, :, 0]) * temp)) / (
+    (max(values[2, :, 0]) - min(values[2, :, 0])) * temp
+)
+norm_rad_4 = (values[3, :, 0] - (min(values[3, :, 0]) * temp)) / (
+    (max(values[3, :, 0]) - min(values[3, :, 0])) * temp
+)
+# norm_rad_1 = (values[4,:,0] - (min(values[4,:,0])*temp)) / ((max(values[4,:,0]-min(values[4,:,0]))*temp)
 
-norm_temp_1 = (values[0,:,5] - (min(values[0,:,5])*temp)) / ((max(values[0,:,5])-min(values[0,:,5]))*temp)
-norm_temp_2 = (values[1,:,5] - (min(values[1,:,5])*temp)) / ((max(values[1,:,5])-min(values[1,:,5]))*temp)
-norm_temp_3 = (values[2,:,5] - (min(values[2,:,5])*temp)) / ((max(values[2,:,5])-min(values[2,:,5]))*temp)
-norm_temp_4 = (values[3,:,5] - (min(values[3,:,5])*temp)) / ((max(values[3,:,5])-min(values[3,:,5]))*temp)
+norm_temp_1 = (values[0, :, 5] - (min(values[0, :, 5]) * temp)) / (
+    (max(values[0, :, 5]) - min(values[0, :, 5])) * temp
+)
+norm_temp_2 = (values[1, :, 5] - (min(values[1, :, 5]) * temp)) / (
+    (max(values[1, :, 5]) - min(values[1, :, 5])) * temp
+)
+norm_temp_3 = (values[2, :, 5] - (min(values[2, :, 5]) * temp)) / (
+    (max(values[2, :, 5]) - min(values[2, :, 5])) * temp
+)
+norm_temp_4 = (values[3, :, 5] - (min(values[3, :, 5]) * temp)) / (
+    (max(values[3, :, 5]) - min(values[3, :, 5])) * temp
+)
 
-#norm_val_1 = (values[0,:,[0,5]] - (min(values[0,:,[0,5]])*temp).T) / (min(values[0,:,[0,5]])*temp).T
-#norm_val_2 = (values[1,:,[0,5]] - (min(values[1,:,[0,5]])*temp).T) / (min(values[1,:,[0,5]])*temp).T
-#norm_val_3 = (values[2,:,[0,5]] - (min(values[2,:,[0,5]])*temp).T) / (min(values[2,:,[0,5]])*temp).T
-#norm_val_4 = (values[3,:,[0,5]] - (min(values[3,:,[0,5]])*temp).T) / (min(values[3,:,[0,5]])*temp).T
-#norm_val_5 = (values[4,:,[0,5]] - (min(values[4,:,[0,5]])*temp).T) / (min(values[4,:,[0,5]])*temp).T
+
+# norm_val_1 = (values[0,:,[0,5]] - (min(values[0,:,[0,5]])*temp).T) / (min(values[0,:,[0,5]])*temp).T
+# norm_val_2 = (values[1,:,[0,5]] - (min(values[1,:,[0,5]])*temp).T) / (min(values[1,:,[0,5]])*temp).T
+# norm_val_3 = (values[2,:,[0,5]] - (min(values[2,:,[0,5]])*temp).T) / (min(values[2,:,[0,5]])*temp).T
+# norm_val_4 = (values[3,:,[0,5]] - (min(values[3,:,[0,5]])*temp).T) / (min(values[3,:,[0,5]])*temp).T
+# norm_val_5 = (values[4,:,[0,5]] - (min(values[4,:,[0,5]])*temp).T) / (min(values[4,:,[0,5]])*temp).T
+
 
 with plt.rc_context({"axes.grid": False}):
     fig, axes = plt.subplots(ncols=4, figsize=(10, 5))
@@ -521,32 +540,28 @@ with plt.rc_context({"axes.grid": False}):
     axes[1].plot(norm_temp_2, norm_rad_2, lw=2)
     axes[2].plot(norm_temp_3, norm_rad_3, color=pal[2], lw=2)
     axes[3].plot(norm_temp_4, norm_rad_4, color=pal[3], lw=2)
-    #axes[4].plot(norm_temp_5, norm_rad_5, color=pal[4], lw=2)
+    # axes[4].plot(norm_temp_5, norm_rad_5, color=pal[4], lw=2)
 
     axes[0].set_ylabel("Normalised depth")
     axes[0].set_xlabel("Normalised temperature [1]")
     axes[1].set_xlabel("Normalised temperature [2]")
     axes[2].set_xlabel("Normalised temperature [3]")
     axes[3].set_xlabel("Normalised temperature [4]")
-    #axes[4].set_xlabel("Normalised temperature [5]")
+    # axes[4].set_xlabel("Normalised temperature [5]")
 
-    axes[0].set_xlim(min(norm_temp_1),max(norm_temp_1))
-    axes[1].set_xlim(min(norm_temp_2),max(norm_temp_2))
-    axes[2].set_xlim(min(norm_temp_3),max(norm_temp_3))
-    axes[3].set_xlim(min(norm_temp_4),max(norm_temp_4))
-    #axes[4].set_xlim(min(norm_temp_5),max(norm_temp_5))
+    axes[0].set_xlim(min(norm_temp_1), max(norm_temp_1))
+    axes[1].set_xlim(min(norm_temp_2), max(norm_temp_2))
+    axes[2].set_xlim(min(norm_temp_3), max(norm_temp_3))
+    axes[3].set_xlim(min(norm_temp_4), max(norm_temp_4))
+    # axes[4].set_xlim(min(norm_temp_5),max(norm_temp_5))
 
-    axes[0].set_ylim(min(norm_rad_1),max(norm_rad_1))
-    axes[1].set_ylim(min(norm_rad_2),max(norm_rad_2))
-    axes[2].set_ylim(min(norm_rad_3),max(norm_rad_3))
-    axes[3].set_ylim(min(norm_rad_4),max(norm_rad_4))
-    #axes[4].set_ylim(min(norm_rad_5),max(norm_rad_5))
+    axes[0].set_ylim(min(norm_rad_1), max(norm_rad_1))
+    axes[1].set_ylim(min(norm_rad_2), max(norm_rad_2))
+    axes[2].set_ylim(min(norm_rad_3), max(norm_rad_3))
+    axes[3].set_ylim(min(norm_rad_4), max(norm_rad_4))
+    # axes[4].set_ylim(min(norm_rad_5),max(norm_rad_5))
 
     plt.tight_layout()
     plt.show()
 
-# %%
-values[:, 0, 2]
-# %%
-ps[-1] / 1e9
 # %%
