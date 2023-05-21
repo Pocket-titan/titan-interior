@@ -1,6 +1,4 @@
 # %%
-from textwrap import dedent
-
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -13,7 +11,7 @@ from burnman import (
     Planet,
     minerals,
 )
-from burnman.tools.chemistry import dictionarize_formula, formula_mass
+from utils import adjust_mineral_density, get_ice_values, verify_results
 
 np.set_printoptions(precision=2, suppress=True)
 
@@ -29,92 +27,7 @@ sns.set_theme(
 )
 pal = sns.color_palette("Set2")
 
-G = 6.67408e-11
-
-# Titan values
-M = 1.3452e23
-R = 2575e3
-g = 1.35
-MoI = 0.352
-pc_theoretical = 3 * G * M**2 / (8 * np.pi * R**4)
-
-
-# %%
-def adjust_mineral_density(mineral, rho_0):
-    rho, V = mineral.evaluate(["rho", "V"], 10**5, 300)
-    mass = rho * V
-    V_new = mass / rho_0
-    delta_V = V_new - V
-
-    return Mineral(
-        params={**mineral.params, "name": f"{mineral.params['name']} rho_0={rho_0:.3e}"},
-        property_modifiers=[
-            [
-                "linear",
-                {
-                    "delta_S": 0,
-                    "delta_E": 0,
-                    "delta_V": delta_V,
-                },
-            ]
-        ],
-    )
-
-
-def get_ice_values(phase: str, rho_0=None):
-    assert phase in ["Ih", "II", "III", "V", "VI", "water1", "water2", "water_IAPWS95"]
-    water_formula = dictionarize_formula("H2O")
-
-    ref_p = 10**5  # Pa
-    ref_T = 300  # K
-    out = sf.seafreeze(
-        np.array([ref_p / 10**6, ref_T]),  # MPa, K
-        phase=phase,
-    )
-
-    molar_mass = formula_mass(water_formula)
-
-    [Kt, Kp, Cv, Cp, alpha, rho, shear, H, S, V] = [
-        out.Kt.item() * 1e6,
-        out.Kp.item(),
-        out.Cv.item(),
-        out.Cp.item(),
-        out.alpha.item(),
-        out.rho.item(),
-        out.shear.item() * 1e6,
-        out.H.item(),
-        out.S.item(),
-        out.V.item() * molar_mass,
-    ]
-
-    params = {
-        # Take liquid water as a base
-        **minerals.HP_2011_ds62.h2oL().params,
-        "name": f"Ice {phase}",
-        "molar_mass": molar_mass,
-        "n": sum(water_formula.values()),
-        # Seafreeze values
-        "K_0": Kt,
-        "Kprime_0": Kp,
-        "G_0": shear,
-        "V_0": V,
-        "H_0": H,
-        "S_0": S,
-        "P_0": ref_p,
-        "T_0": ref_T,
-        "grueneisen_0": alpha * Kt / (Cv * rho),
-        "Cp": [Cp, 0, 0, 0],
-        "Cv": [Cv, 0, 0, 0],
-        "q_0": 1,
-    }
-
-    mineral = Mineral(params=params)
-
-    if rho_0 is not None:
-        mineral = adjust_mineral_density(mineral, rho_0)
-
-    return (mineral, alpha, Kt, Cp)
-
+# 3 scenarios:
 
 # %%
 materials = {
@@ -207,23 +120,10 @@ models = {
     },
 }
 
+
 # Make the planet
 layers = models["Fortes"]["Dense ocean"]
-
-# convecting_layer = [x for x in layers if "water" in x.name.lower()][0]
-# perturbation = BoundaryLayerPerturbation(
-#     convecting_layer.radii[0],
-#     convecting_layer.radii[-1],
-#     rayleigh_number=1e5,
-#     # top has jump of 60K, botttom has jump of 100 - 60 = 40K
-#     temperature_change=900,
-#     boundary_layer_ratio=60.0 / 900,
-# )
-
-# convecting_layer.set_temperature_mode(
-#     "perturbed-adiabatic",
-#     perturbation.temperature(convecting_layer.radii),
-# )
+titan = Planet("Titan", layers, verbose=True)
 
 
 def make_temperature_profile(layers, gradients, T0=93):
@@ -255,9 +155,9 @@ def make_temperature_profile(layers, gradients, T0=93):
 
 # Inside to outside layers: start with core
 gradients = [
-    8,
     0.1,
     0.1,
+    2,
     0.1,
 ]
 Ts = make_temperature_profile(layers, gradients)
@@ -266,40 +166,96 @@ for i, layer in enumerate(layers):
     layer.set_temperature_mode("user-defined", Ts[i])
 
 
+def calculate_rayleigh_number(convecting_layer, T_range):
+    g_avg = np.mean(convecting_layer.gravity)
+    r_range = convecting_layer.radii[[0, -1]]
+    T_avg = np.mean(T_range)
+
+    alpha = np.mean(convecting_layer.alpha)
+    rho = np.mean(convecting_layer.rho)
+    Cp = np.mean(convecting_layer.C_p)
+
+    Pr = 10  # turbulent
+    # Pr = 1  # turbulent
+
+    # # Vogel-Fulcher-Tammann equation for dynamic viscosity of water:
+    # A = 0.02939
+    # B = 507.88
+    # C = 149.3
+    # visc = A * np.exp(B / (T_avg - C)) * 1e-3
+
+    # _rho = 1000
+    # visc = 0.0168 * _rho * (20) ** (-0.88)  # 20 C
+
+    # Thermal conductivity of water at 20 deg C (https://pubs.aip.org/aip/jpr/article/41/3/033102/242059/New-International-Formulation-for-the-Thermal)
+    k = 0.598
+    diff = k / (rho * Cp)
+    visc = diff * Pr
+
+    dT = abs(T_range[1] - T_range[0])
+    l = abs(r_range[1] - r_range[0])
+    l = 100e3
+    print(l)
+    Ra = rho * alpha * dT * l**3 * g_avg / (diff * visc)
+
+    # Roche et al. (2010)
+    # Gastine et al. (2015)
+    # Gastine et al. (2016)
+
+    # New
+    rho = 1200
+    g0 = 1.35  # good!
+    alpha = 3.2e-4  # good!
+    Cp = 2800
+    visc = 1.8e-6  # good!
+    diff = 1.3e-7  # good!
+    dT = dT = 7.3 * (visc / (alpha * g0 * rho * Cp)) ** (1 / 4) * (3 * 1e-3) ** (3 / 4)
+    Ra = rho * alpha * dT * l**3 * g0 / (diff * visc)
+
+    print(Ra)
+
+    return Ra
+
+
+titan.make()
 # %%
-titan = Planet("Titan", layers, verbose=True)
+# T of bottom of convecting layer
+idx, convecting_layer = [[i, x] for i, x in enumerate(titan.layers) if "water" in x.name.lower()][0]
+lower_layer = titan.layers[idx - 1]
+upper_layer = titan.layers[idx + 1]
+T_top = upper_layer.temperatures[0]
+T_bottom = T_top + 0.0005440344841147866
+
+
+T_range = [T_top, T_bottom]
+
+Ra = calculate_rayleigh_number(convecting_layer, T_range)
+print(f"Rayleigh number: {Ra:.4e}")
+# upper_layer.pressures[0]
+
+dT = T_bottom - T_top
+
+perturbation = BoundaryLayerPerturbation(
+    convecting_layer.radii[0],
+    convecting_layer.radii[-1],
+    rayleigh_number=Ra,
+    # top has jump of 60K, botttom has jump of 100 - 60 = 40K
+    temperature_change=dT,  # 100
+    boundary_layer_ratio=(dT / 2) / dT,  # 60 / 100
+)
+
+convecting_layer.set_temperature_mode(
+    "perturbed-adiabatic",
+    perturbation.temperature(convecting_layer.radii),
+)
+
 titan.make()
 
-print(
-    dedent(
-        f"""
-    M = {titan.mass:.3e} kg
-    I = {titan.moment_of_inertia_factor:.4f}
-    r = {titan.radius_planet/1e3:.3e} km
-    g = {titan.gravity[-1]:.5f} m/s^2
-    pc = {titan.pressures[0]/1e9:.4f} GPa
 
-    Errors:
-    M = {100 * (titan.mass - M)/M:.2f} %
-    I = {100 * (titan.moment_of_inertia_factor - MoI)/MoI:.2f} %
-    r = {100 * (titan.radius_planet - R)/R:.2f} %
-    g = {100 * (titan.gravity[-1] - g)/g:.2f} %
-    pc = {100 * (titan.pressures[0] - pc_theoretical)/pc_theoretical:.2f} %
-    """
-    )
-)
-
-# TODO:
-# 1) impose temp gradient in pt 2 (dT/dz = set)
-# 2) impose temp gradient in burnman
-# 3) convection
-# 4) convection in burnman
-# 5) convection in rock-ice mantle?
+# %%
 
 rs = titan.radii
-ms = np.array(
-    [0, *np.cumsum(4 * np.pi * titan.density[:-1] * np.diff(titan.radii**3) / 3)]
-)
+ms = np.array([0, *np.cumsum(4 * np.pi * titan.density[:-1] * np.diff(titan.radii**3) / 3)])
 gs = titan.gravity
 ps = titan.pressures
 rhos = titan.density
@@ -309,6 +265,8 @@ m_total = titan.mass
 p_center = ps[0]
 g_surface = gs[-1]
 MoI_computed = titan.moment_of_inertia_factor
+
+verify_results(m_total, g_surface, p_center, MoI_computed)
 
 with plt.rc_context({"axes.grid": False}):
     fig, axes = plt.subplots(ncols=5, figsize=(10, 5))
@@ -347,54 +305,40 @@ with plt.rc_context({"axes.grid": False}):
     plt.tight_layout()
     plt.show()
 
-
 # %%
-def create_temperatures(temperatures, num, gradient=None):
-    if gradient is not None:
-        T0 = temperatures[0] if hasattr(temperatures, "__iter__") else temperatures
-        return T0 + np.cumsum([0, *([gradient] * (num - 1))])
+Omega = 4.6e-6
+rho = 1200
+g0 = 1.35  # good!
+alpha = 3.2e-4  # good!
+Cp = 2800
+visc = 1.8e-6  # good!
+diff = 1.3e-7  # good!
+q0 = 7e-3  # [6-8e-3] mW/m^2
 
-    return np.linspace(temperatures[0], temperatures[1], num)
+D = 250e3
+
+from scipy.optimize import minimize_scalar, root_scalar
 
 
-create_temperatures([93, 900], num=100)
+def calculate_nussert_rayleigh(dT):
+    Nu = q0 * D / (rho * Cp * diff * dT)
+    Ra = alpha * g0 * dT * D**3 / (visc * diff)
+    E = visc / (Omega * D**2)
 
-# %%
-T0 = 93
-gradients = [
-    *reversed(
-        [
-            0.1,
-            0.2,
-            0.1,
-            0.1,
-        ]
-    )
-]
-Ts = []
+    Nu1 = 0.07 * Ra ** (1 / 3)
+    Nu2 = 0.0171 * Ra**0.389
+    Nu3 = 0.15 * Ra ** (3 / 2) * E**2
 
-for i, layer in enumerate(reversed(layers)):
-    _T0 = T0 if i == 0 else Ts[-1][-1]
-    thickness = layer.radii[-1] - layer.radii[0]
-    Ts.append(
-        _T0 + np.linspace(0, thickness * gradients[i] / 1e3, num=layer.radii.shape[0])
-    )
+    dNu1 = Nu1 - Nu
+    dNu2 = Nu2 - Nu
+    dNu3 = Nu3 - Nu
 
-Ts = np.concatenate(
-    Ts,
-)
-plt.plot(Ts, titan.radii / 1e3)
+    return (dNu1, dNu2, dNu3, Nu, dT, Ra)
 
-# %%
 
-plt.scatter(Ts, titan.radii / 1e3)
+# res = minimize_scalar(calculate_nussert_rayleigh, bounds=(0, 100), method="bounded")
+res = root_scalar(lambda x: calculate_nussert_rayleigh(x)[1], x0=1e-7, x1=1e-5)
+print(res)
+print(calculate_nussert_rayleigh(res.root)[-1])
 
-# %%
-plt.scatter(Ts, titan.radii / 1e3)
-# %%
-x = [*np.linspace(0, 5, num=30), *np.linspace(5, 10, num=70)]
-y = [*np.linspace(0, 50, num=30), *np.linspace(50, 100, num=70)]
-plt.scatter(x, y)
-# %%
-y
 # %%
