@@ -7,6 +7,7 @@ from utils import (
     get_temp_info,
     iterate_layers,
     models,
+    picks,
     verify_results,
 )
 
@@ -24,13 +25,6 @@ sns.set_theme(
 )
 pal = sns.color_palette("Set2")
 # %%
-picks = [
-    ["Fortes", r"Pure water ice"],
-    ["Fortes", r"Light ocean"],
-    ["Kronrod", r"15% Fe core"],
-    ["Grasset", r"No core"],
-]
-
 for pick in picks:
     paper, model = pick
     layers = models[paper][model]

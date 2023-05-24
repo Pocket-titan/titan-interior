@@ -1018,3 +1018,35 @@ def generate_error_table():
     )
 
     print(str)
+
+def make_models_table(data):
+    index = pd.MultiIndex.from_tuples(picks)
+
+    df = pd.DataFrame(
+        data,
+        columns=[
+            "",
+            "$r$ [km]",
+            "$Ra$ [-]",
+            "",
+            "$r$ [km]",
+            "$Ra$ [-]",
+            "",
+            "$r$ [km]",
+            "$Ra$ [-]",
+            "",
+            "$r$ [km]",
+            "$Ra$ [-]",
+            "",
+            "$r$ [km]",
+            "$Ra$ [-]",
+        ],
+        index=index,
+    )
+    print(
+        df.T.style.to_latex(
+            hrules=True,
+            caption=r"Models selected from literature for comparison. See table \ref{tab:materials} for the thermoelastic properties associated with the specific layers.",
+            label="tab:layers",
+        )
+    )

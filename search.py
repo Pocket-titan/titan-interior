@@ -9,11 +9,12 @@ from utils import (
     integrate,
     layer_map,
     models,
+    picks,
     thermo_values,
     verify_results,
 )
 
-np.set_printoptions(precision=2, suppress=True)
+np.set_printoptions(precision=4, suppress=True)
 
 sns.set_theme(
     style="ticks",
@@ -96,13 +97,6 @@ def try_random_radii(thickness_ranges, names, num=1000):
 
 
 # %%
-picks = [
-    ["Fortes", r"Pure water ice"],
-    ["Fortes", r"Light ocean"],
-    ["Kronrod", r"15% Fe core"],
-    ["Grasset", r"No core"],
-]
-
 for paper, model in picks:
     base_radii = models[paper][model][:, :2]
     names = layer_map[paper][model]

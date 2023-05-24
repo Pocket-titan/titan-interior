@@ -6,10 +6,11 @@ from utils import (
     compute_moment_of_inertia,
     integrate,
     models,
+    picks,
     verify_results,
 )
 
-np.set_printoptions(precision=2, suppress=True)
+np.set_printoptions(precision=4, suppress=True)
 
 sns.set_theme(
     style="ticks",
@@ -24,13 +25,6 @@ sns.set_theme(
 pal = sns.color_palette("Set2")
 
 # %%
-picks = [
-    ["Fortes", r"Pure water ice"],
-    ["Fortes", r"Light ocean"],
-    ["Kronrod", r"15% Fe core"],
-    ["Grasset", r"No core"],
-]
-
 for pick in picks:
     paper, model = pick
     layers = models[paper][model]
@@ -91,34 +85,8 @@ for pick in picks:
             + "}$]"
         )
         plt.tight_layout()
+        # plt.show()
         # plt.savefig(f"./figures/model1_{paper}_{model}.pdf".replace(r"%", ""), dpi=300)
 
-# %%
-import pandas as pd
-
-# fmt: off
-data = [
-    # Model 1                   # Model 2                    # Model 3
-    [0.63, 70.45, 0.93, 6.96,   0.63, 70.45, 0.93, 6.96,     6.59, 42.66, 6.31, 5.14],
-    [4.33, 64.85, 4.04, 9.58,   4.33, 64.85, 4.04, 9.58,     11.24, 37.50, 10.97, 7.59],
-    [2.08, 63.05, 1.79, 1.00,   2.08, 63.05, 1.79, 1.00,     10.78, 67.33, 10.51, 0.14],
-    [0.76, 92.73, 1.07, 10.10,  0.76, 92.73, 1.07, 10.10,    14.60, 145.82, 14.94, 8.69],
-]
-# fmt: on
-
-cols = [r"$M$", r"$P_c$", r"$g_0$", r"$I/MR^2$"]
-index = pd.MultiIndex.from_tuples(picks)
-columns = pd.MultiIndex.from_tuples(
-    [(x, y) for x in ["Model 1", "Model 2", "Model 3"] for y in cols]
-)
-df = pd.DataFrame(data, index=index, columns=columns)
-
-str = df.T.style.format(formatter=lambda x: f"{x:2.2f}%").to_latex(
-    hrules=True,
-    caption=r"errors",
-    label="tab:errors",
-)
-
-print(str)
 
 # %%
